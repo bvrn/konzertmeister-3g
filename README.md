@@ -65,18 +65,17 @@ erstellt aus einer Anwesenheitsliste verschiedene Formate zum Abhaken der drei "
     </li>
     <li><a href="#usage">Usage</a></li>
     <li><a href="#problems">Problems</a></li>
-    <li><a href="#Example">Example</a></li>
+    <li><a href="#example">Example</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li>
       <a href="#contributing">Contributing</a>
-      ul>
+      <ul>
         <li><a href="#dependency-management">Dependency Management</a></li>
         <li><a href="#code-quality">Code quality</a></li>
       </ul>
     </li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgements">Acknowledgements</a></li>
   </ol>
 </details>
 
