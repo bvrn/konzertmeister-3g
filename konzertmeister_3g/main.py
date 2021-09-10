@@ -1,92 +1,104 @@
+#!/usr/bin/env python
+
+from __future__ import annotations
+
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 import pdfkit
 import typer
 
+
+class OutputFormats(str, Enum):
+    csv = "csv"
+    html = "html"
+    latex = "latex"
+    md = "md"
+    pdf = "pdf"
+    xlsx = "xlsx"
+
+    @classmethod
+    @property
+    def entries(cls) -> List[OutputFormats]:
+        return [e for e in cls]
+
+
 app = typer.Typer()
 
+def query_user_input():
+    format = [
+        e for e in OutputFormats.entries if typer.confirm(f"Export {e.value}?")
+    ]
+    title = typer.prompt(
+        "Title",
+        default="Nachweiskontrolle 3G (Getestet, Genesen, Geimpft)",
+        type=str,
+        show_default=True,
+    )
+    date = typer.prompt(
+        "Date",
+        default=datetime.now().strftime("%d.%m.%Y"),
+        type=str,
+        show_default=True,
+    )
+    checkbox = typer.prompt(
+        "Export with Checkboxes? [y/N]",
+        default=False,
+        type=bool,
+        show_default=False,
+    )
+    if not format:
+        typer.echo(
+            typer.style(
+                "No export format chosen. Exiting now.",
+                fg=typer.colors.WHITE,
+                bg=typer.colors.RED,
+            ),
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    
+    return format, title, date, checkbox
 
 @app.command()
 def convert(
     file: typer.FileText = typer.Argument(..., help="Konzertmeister CSV"),
-    interactively: bool = typer.Option(
-        False,
-        "--interactively",
-        "-i",
-        help="ask for everything interactively",
+    format: Optional[List[OutputFormats]] = typer.Option(
+        None,
+        "-f",
+        "--format",
+        help="Output format(s). Repeat for multiple values.",
+        case_sensitive=False,
         show_default=False,
     ),
-    pdf: bool = typer.Option(False, "--pdf", help="export PDF", show_default=False),
-    xlsx: bool = typer.Option(False, "--xlsx", help="export XLSX", show_default=False),
-    html: bool = typer.Option(False, "--html", help="export HTML", show_default=False),
-    markdown: bool = typer.Option(
-        False, "--md", help="export Markdown", show_default=False
-    ),
-    latex: bool = typer.Option(
-        False, "--latex", help="export LaTeX", show_default=False
-    ),
-    csv: bool = typer.Option(False, "--csv", help="export CSV", show_default=False),
     checkbox: bool = typer.Option(
-        False, "--checkbox", help="Checkbox in HTML and Markdown?", show_default=False
+        False,
+        "-c",
+        "--checkbox",
+        help="Checkbox in HTML and Markdown?",
+        show_default=False,
     ),
     title: Optional[str] = typer.Option(
         "Nachweiskontrolle 3G (Getestet, Genesen, Geimpft)"
     ),
     date: Optional[str] = datetime.now().strftime("%d.%m.%Y"),
+    output: Path = typer.Option(
+        Path(".").resolve(),
+        "-o",
+        "--output",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        resolve_path=True,
+    ),
 ):
-    if not (pdf or xlsx or html or markdown or latex or csv) or interactively:
-        pdf = typer.prompt(
-            "Export PDF [y/N]", default=False, type=bool, show_default=False
-        )
-        xlsx = typer.prompt(
-            "Export XLSX [y/N]", default=False, type=bool, show_default=False
-        )
-        html = typer.prompt(
-            "Export HTML [y/N]", default=False, type=bool, show_default=False
-        )
-        markdown = typer.prompt(
-            "Export Markdown [y/N]", default=False, type=bool, show_default=False
-        )
-        latex = typer.prompt(
-            "Export LaTeX [y/N]", default=False, type=bool, show_default=False
-        )
-        csv = typer.prompt(
-            "Export CSV [y/N]", default=False, type=bool, show_default=False
-        )
-        if not (pdf or xlsx or html or markdown or latex or csv):
-            typer.echo(
-                typer.style(
-                    "No export format chosen. Exiting now.",
-                    fg=typer.colors.WHITE,
-                    bg=typer.colors.RED,
-                ),
-                err=True,
-            )
-            raise typer.Exit(code=1)
-
-    if interactively:
-        title = typer.prompt(
-            "Title",
-            default="Nachweiskontrolle 3G (Getestet, Genesen, Geimpft)",
-            type=str,
-            show_default=True,
-        )
-        date = typer.prompt(
-            "Date",
-            default=datetime.now().strftime("%d.%m.%Y"),
-            type=str,
-            show_default=True,
-        )
-        checkbox = typer.prompt(
-            "Export with Checkboxes? [y/N]",
-            default=False,
-            type=bool,
-            show_default=False,
-        )
+    if not format:
+        format, title, date, checkbox = query_user_input()
 
     basename = Path(file.name).resolve().stem
 
@@ -121,20 +133,20 @@ def convert(
         .render()
     )
     html_rendered = f"<meta charset='UTF-8'>\n{html_rendered}"
-    if html:
+    if OutputFormats.html in format:
         with open(basename + ".html", "w", encoding="utf-8") as file:
             file.write(html_rendered)
-    if xlsx:
+    if OutputFormats.xlsx in format:
         df.style.set_caption(f"{title} – {date}").apply(rower, axis=None).apply(
             colorize, axis=0, subset=pd.IndexSlice[:, "Rückmeldung"]
         ).to_excel(basename + ".xlsx", index=False)
-    if csv:
+    if OutputFormats.csv in format:
         df.to_csv(basename + ".csv", index=False)
-    if latex:
+    if OutputFormats.latex in format:
         df.to_latex(basename + ".tex", index=False)
-    if markdown:
+    if OutputFormats.md in format:
         df_checkboxes.to_markdown(basename + ".md", index=False)
-    if pdf:
+    if OutputFormats.pdf in format:
         pdfkit.from_string(html_rendered, basename + ".pdf", options={"quiet": ""})
 
 
