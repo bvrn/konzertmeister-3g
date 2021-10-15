@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "konzertmeister-3g"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
-authors = ["Jan Otto <kontakt@jc-otto.de>"]
+authors = ["Jan Otto <kontakt@jc-otto.de>", "Frank <Fra-nk@users.noreply.github.com>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
